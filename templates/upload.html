@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>上传文件</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #2196F3;
+            --danger-color: #f44336;
+            --background-color: #f5f5f5;
+            --text-color: #333;
+            --border-radius: 4px;
+            --box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            --transition: all 0.2s ease;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            margin-bottom: 20px;
+        }
+
+        .upload-form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            width: 100%;
+            text-align: center;
+        }
+
+        .file-input {
+            position: absolute;
+            width: 0.1px;
+            height: 0.1px;
+            opacity: 0;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .file-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px;
+            background: white;
+            border: 2px dashed var(--secondary-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .file-label:hover {
+            border-color: var(--primary-color);
+            background: #f8f9fa;
+            transform: translateY(-1px);
+        }
+
+        .upload-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: var(--secondary-color);
+        }
+
+        .file-hint {
+            margin-top: 8px;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .upload-btn {
+            padding: 12px 30px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .upload-btn:hover {
+            background-color: #1976D2;
+            transform: translateY(-1px);
+        }
+
+        .back-btn {
+            padding: 8px 15px;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            font-size: 0.9em;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .back-btn:hover {
+            background-color: #4b626d;
+            transform: translateY(-1px);
+        }
+
+        .back-btn::before {
+            content: "←";
+            font-size: 1.2em;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .selected-files {
+            margin-top: 10px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-actions">
+            <a href="/index" class="back-btn">返回首页</a>
+        </div>
+        <form action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
+            <div class="file-input-wrapper">
+                <input type="file" name="f1" multiple id="fileInput" class="file-input" onchange="updateFileList(this)">
+                <label for="fileInput" class="file-label">
+                    <i class="upload-icon">📁</i>
+                    <span id="fileNameDisplay">选择文件</span>
+                    <small class="file-hint">支持多文件上传</small>
+                </label>
+                <!-- <div id="selectedFiles" class="selected-files"></div> -->
+            </div>
+            <button type="submit" class="upload-btn">上传文件</button>
+            <div id="selectedFiles" class="selected-files"></div>
+        </form>
+    </div>
+
+    <script>
+        function updateFileList(input) {
+            const fileNameDisplay = document.getElementById('fileNameDisplay'); // 获取显示文件名的元素
+            const selectedFiles = document.getElementById('selectedFiles'); // 获取显示已选择文件列表的元素
+            selectedFiles.innerHTML = ''; // 清空已选择文件列表的内容
+            
+            if (input.files.length > 0) { // 检查是否有文件被选择
+                fileNameDisplay.textContent = `已选择 ${input.files.length} 个文件`; // 更新文件名显示为已选择的文件数量
+                
+                Array.from(input.files).forEach(file => { // 遍历所有选择的文件
+                    const fileItem = document.createElement('div'); // 创建一个新的 div 元素用于显示文件信息
+                    fileItem.className = 'selected-file-item'; // 设置 div 的类名
+                    fileItem.innerHTML = `
+                        <span class="file-icon">📄</span> // 添加文件图标
+                        <span>${file.name}</span> // 显示文件名
+                    `;
+                    selectedFiles.appendChild(fileItem); // 将文件信息添加到已选择文件列表中
+                });
+            } else {
+                fileNameDisplay.textContent = '选择文件'; // 如果没有选择文件，显示提示信息
+            }
+        }
+        // 添加上传成功提示功能
+        document.querySelector('.upload-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // 阻止默认表单提交行为
+
+            const files = document.getElementById('fileInput').files;
+            let filesUploaded = 0; // 记录已上传文件数量
+
+            if (files.length > 0) {
+                Array.from(files).forEach(file => {
+                    // 设置文件大小阈值，超过此值则使用分片上传
+                    const fileSizeThreshold = 10 * 1024 * 1024; // 10MB
+                    
+                    if (file.size > fileSizeThreshold) {
+                        console.log(`文件 ${file.name} 大小为 ${file.size} 字节，使用切片上传`);
+                        // 大文件使用分片上传
+                        uploadFileInChunks(file, () => {
+                            filesUploaded++;
+                            if (filesUploaded === files.length) {
+                                alert('所有文件上传完成！');
+                                location.reload(); // 刷新页面
+                            }
+                        });
+                    } else {
+                        console.log(`文件 ${file.name} 大小为 ${file.size} 字节，使用直接上传`);
+                        // 小文件直接上传
+                        uploadFileDirectly(file, () => {
+                            filesUploaded++;
+                            if (filesUploaded === files.length) {
+                                alert('所有文件上传完成！');
+                                location.reload(); // 刷新页面
+                            }
+                        });
+                    }
+                });
+            }
+        });
+
+        // 添加直接上传文件的函数
+        function uploadFileDirectly(file, callback) {
+            const formData = new FormData();
+            formData.append('f1', file); // 使用与表单相同的字段名 'f1'
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (response.ok) {
+                    callback(); // 调用回调函数，表示当前文件上传完成
+                } else {
+                    alert('上传失败');
+                }
+            }).catch(error => {
+                console.error('上传出错:', error);
+                alert('上传出错: ' + error.message);
+            });
+        }
+
+        // 添加切片上传文件的函数
+        function uploadFileInChunks(file, callback) {
+            const chunkSize = 1024 * 1024; // 1MB，定义每个文件块的大小为1MB
+            const totalChunks = Math.ceil(file.size / chunkSize); // 计算文件需要分成多少块
+            let currentChunk = 0; // 初始化当前块索引为0
+
+            function uploadNextChunk() {
+                const start = currentChunk * chunkSize; // 计算当前块的起始位置
+                const end = Math.min(start + chunkSize, file.size); // 计算当前块的结束位置
+                const chunk = file.slice(start, end); // 从文件中提取当前块
+
+                const formData = new FormData(); // 创建一个新的表单数据对象
+                formData.append('chunk', chunk); // 将当前块添加到表单数据中
+                formData.append('chunkNumber', currentChunk); // 添加当前块的编号
+                formData.append('totalChunks', totalChunks); // 添加总块数
+                formData.append('fileName', file.name); // 添加文件名
+
+                fetch('/upload-chunk', { // 使用 fetch API 发送 POST 请求，将块上传到服务器
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (response.ok) { // 如果上传成功
+                        currentChunk++; // 递增当前块索引
+                        if (currentChunk < totalChunks) {
+                            uploadNextChunk(); // 继续上传下一个块
+                        } else {
+                            callback(); // 调用回调函数，表示当前文件上传完成
+                        }
+                    } else {
+                        alert('上传失败'); // 如果上传失败，显示上传失败的提示
+                    }
+                });
+            }
+            uploadNextChunk(); // 开始上传第一个块
+        }
+    </script>
+</body>
+</html>

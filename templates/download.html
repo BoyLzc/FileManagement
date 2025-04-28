@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>下载文件</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #2196F3;
+            --danger-color: #f44336;
+            --background-color: #f5f5f5;
+            --text-color: #333;
+            --border-radius: 4px;
+            --box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            --transition: all 0.2s ease;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            margin-bottom: 20px;
+        }
+
+        .file-list {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            padding: 15px;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            align-items: center;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-icon {
+            font-size: 1.5em;
+            color: var(--secondary-color);
+        }
+
+        .file-name {
+            font-size: 1.1em;
+            color: var(--text-color);
+        }
+
+        .download-btn {
+            padding: 8px 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            font-size: 0.9em;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .download-btn:hover {
+            background-color: #1976D2;
+            transform: translateY(-1px);
+        }
+
+        .back-btn {
+            padding: 8px 15px;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            font-size: 0.9em;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .back-btn:hover {
+            background-color: #4b626d;
+            transform: translateY(-1px);
+        }
+
+        .back-btn::before {
+            content: "←";
+            font-size: 1.2em;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .file-count {
+            margin-bottom: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .pagination {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .pagination button {
+            padding: 8px 15px;
+            border: 1px solid var(--primary-color);
+            border-radius: var(--border-radius);
+            background-color: white;
+            color: var(--primary-color);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .pagination button:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .pagination button:disabled {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-actions">
+            <a href="/index" class="back-btn">返回首页</a>
+        </div>
+        
+        <div class="file-list">
+            <h3>可下载文件列表：</h3>
+            <div class="file-count">总文件数：<span id="totalFiles">{{len .fileList}}</span></div>
+            <div id="paginatedList">
+                {{range .fileList}}
+                <div class="file-item">
+                    <div class="file-info">
+                        <span class="file-icon">📄</span>
+                        <span class="file-name">{{.Name}}</span>
+                    </div>
+                    <a href="/download/{{.Id}}" class="download-btn">
+                        <span>下载</span>
+                        <span>⬇</span>
+                    </a>
+                </div>
+                {{end}}
+            </div>
+            
+            <!-- 分页控制 -->
+            <div class="pagination">
+                <button onclick="changePage(-1)" id="prevBtn">&laquo; 上一页</button>
+                <span id="pageInfo">第 <span id="currentPage">1</span> 页，共 <span id="totalPages">1</span> 页</span>
+                <button onclick="changePage(1)" id="nextBtn">下一页 &raquo;</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 分页相关变量
+        let currentPage = 1;
+        const itemsPerPage = 10; // 每页显示的文件数量
+        const fileItems = document.querySelectorAll('.file-item');
+        const totalPages = Math.ceil(fileItems.length / itemsPerPage);
+
+        // 更新分页信息显示
+        function updatePaginationInfo() {
+            document.getElementById('currentPage').textContent = currentPage;
+            document.getElementById('totalPages').textContent = totalPages;
+            
+            // 更新按钮状态
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage === totalPages;
+        }
+
+        // 显示指定页的文件
+        function showPage(page) {
+            const start = (page - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+
+            fileItems.forEach((item, index) => {
+                item.style.display = (index >= start && index < end) ? 'flex' : 'none';
+            });
+        }
+
+        // 切换页面
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                showPage(currentPage);
+                updatePaginationInfo();
+            }
+        }
+
+        // 初始化分页
+        document.addEventListener('DOMContentLoaded', function() {
+            showPage(1);
+            updatePaginationInfo();
+        });
+    </script>
+</body>
+</html>

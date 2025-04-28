@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>文件管理页面</title>
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --secondary-color: #607D8B;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --background-color: #f0f2f5;
+            --text-color: #333;
+            --border-radius: 8px;
+            --box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .file-list {
+            background: white;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: var(--box-shadow);
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            transition: var(--transition);
+        }
+
+        .file-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-type {
+            color: #666;
+            margin-left: 10px;
+        }
+
+        .pagination {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .pagination button {
+            padding: 8px 15px;
+            border: 1px solid var(--primary-color);
+            border-radius: var(--border-radius);
+            background-color: white;
+            color: var(--primary-color);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .pagination button:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .pagination button:disabled {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .delete-btn {
+            padding: 8px 15px;
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .delete-btn:hover {
+            background-color: #c82333;
+            transform: translateY(-1px);
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .file-count {
+            margin-bottom: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .batch-delete-btn {
+            padding: 8px 15px;
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            margin-bottom: 15px;
+        }
+
+        .batch-delete-btn:hover {
+            background-color: #c82333;
+            transform: translateY(-1px);
+        }
+
+        .batch-delete-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .upload-btn {
+            padding: 8px 15px;
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        .upload-btn:hover {
+            background-color: #218838;
+            transform: translateY(-1px);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        h3 {
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 文件列表展示 -->
+    <div class="file-list">
+        <h3>已上传文件列表：</h3>
+        <div class="header-actions">
+            <div class="file-count">总文件数：<span id="totalFiles">{{len .fileList}}</span></div>
+            <a href="/upload" class="upload-btn">上传文件</a>
+            <a href="/download" class="upload-btn">下载文件</a>
+        </div>
+        <button id="batchDeleteBtn" class="batch-delete-btn" disabled onclick="deleteSelectedFiles()">
+            批量删除
+        </button>
+        <button id="toggleSelectBtn" class="upload-btn" onclick="toggleSelectFiles()">全选当前页</button>
+        <!-- 分页文件列表 -->
+        <div id="paginatedList">
+            {{range .fileList}}
+            <div class="file-item">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" class="file-checkbox" data-id="{{.Id}}">
+                    <span>{{.Id}}. {{.Name}}</span>
+                </div>
+                <div class="actions">
+                    <!-- <span class="file-type">类型: {{.Type}}</span> -->
+                    <button class="delete-btn" onclick="deleteFile('{{.Id}}')">删除</button>
+                </div>
+            </div>
+            {{end}}
+        </div>
+        
+        <!-- 分页控制 -->
+        <div class="pagination">
+            <button onclick="changePage(-1)" id="prevBtn">&laquo; 上一页</button>
+            <span id="pageInfo">第 <span id="currentPage">1</span> 页，共 <span id="totalPages">1</span> 页</span>
+            <button onclick="changePage(1)" id="nextBtn">下一页 &raquo;</button>
+        </div>
+    </div>
+
+    <script>
+        // 删除文件的函数，接收文件ID作为参数
+        function deleteFile(fileId) {
+            // 弹出确认对话框，询问用户是否确定要删除文件
+            if (confirm('确定要删除这个文件吗？')) {
+                // 使用fetch API发送DELETE请求到后端的删除接口
+                fetch('/delete/' + fileId, {
+                    method: 'DELETE'  // 设置HTTP方法为DELETE
+                })
+                // 将响应转换为JSON格式
+                .then(response => response.json())
+                // 处理响应数据
+                .then(data => {
+                    if (data.success) {  // 如果删除成功
+                        // 刷新页面以显示更新后的文件列表
+                        window.location.reload();
+                    } else {  // 如果删除失败
+                        // 弹出警告框显示错误信息
+                        alert('删除文件失败：' + data.message);
+                    }
+                })
+                // 捕获并处理请求过程中的错误
+                .catch(error => {
+                    // 弹出警告框显示错误信息
+                    alert('删除文件时发生错误：' + error);
+                });
+            }
+        }
+
+        // 获取页面中所有的文件复选框和批量删除按钮元素
+        const checkboxes = document.querySelectorAll('.file-checkbox');
+        const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+
+        // 为每个复选框添加change事件监听器
+        // 当复选框状态改变时，更新批量删除按钮的状态
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateBatchDeleteButton);
+        });
+
+        // 更新批量删除按钮的启用/禁用状态
+        // 当有文件被选中时启用按钮，没有文件被选中时禁用按钮
+        function updateBatchDeleteButton() {
+            // 获取所有被选中的复选框数量
+            const selectedCount = document.querySelectorAll('.file-checkbox:checked').length;
+            // 如果选中数量为0，禁用批量删除按钮，否则启用
+            batchDeleteBtn.disabled = selectedCount === 0;
+        }
+
+        // 切换全选和全不选的功能
+        function toggleSelectFiles() {
+            const currentPageCheckboxes = Array.from(document.querySelectorAll('.file-item .file-checkbox')).filter(checkbox => {
+                return checkbox.closest('.file-item').style.display !== 'none';
+            });
+            const allSelected = currentPageCheckboxes.every(checkbox => checkbox.checked);
+
+            currentPageCheckboxes.forEach(checkbox => {
+                checkbox.checked = !allSelected;
+            });
+
+            // 更新按钮文本
+            const toggleSelectBtn = document.getElementById('toggleSelectBtn');
+            toggleSelectBtn.textContent = allSelected ? '全选当前页' : '取消全选当前页';
+
+            updateBatchDeleteButton();
+        }
+
+        // 批量删除选中的文件
+        function deleteSelectedFiles() {
+            // 获取所有被选中的文件复选框
+            const selectedFiles = document.querySelectorAll('.file-checkbox:checked');
+            // 将选中的复选框转换为文件ID数组
+            const fileIds = Array.from(selectedFiles).map(checkbox => checkbox.dataset.id);
+            // 弹出确认对话框，显示选中的文件数量
+            if (confirm(`确定要删除选中的 ${fileIds.length} 个文件吗？`)) {
+                // 使用Promise.all并行处理所有删除请求
+                Promise.all(fileIds.map(id => 
+                    // 对每个文件ID发送删除请求
+                    fetch('/delete/' + id, { method: 'DELETE' })
+                        .then(response => response.json())
+                ))
+                .then(results => {
+                    // 统计删除失败的文件数量
+                    const failures = results.filter(result => !result.success);
+                    // 如果有删除失败的文件，显示失败数量
+                    if (failures.length > 0) {
+                        alert(`${failures.length} 个文件删除失败`);
+                    }
+                    // 刷新页面以更新文件列表
+                    window.location.reload();
+                })
+                // 捕获并处理批量删除过程中的错误
+                .catch(error => {
+                    alert('批量删除文件时发生错误：' + error);
+                });
+            }
+        }
+
+        // 分页相关变量
+        let currentPage = 1;
+        const itemsPerPage = 10; // 每页显示5个文件
+        const fileItems = document.querySelectorAll('.file-item');
+        const totalPages = Math.ceil(fileItems.length / itemsPerPage);
+
+        // 更新分页信息显示
+        function updatePaginationInfo() {
+            document.getElementById('currentPage').textContent = currentPage;
+            document.getElementById('totalPages').textContent = totalPages;
+            
+            // 更新按钮状态
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage === totalPages;
+        }
+
+        // 显示当前页的文件
+        function showCurrentPage() {
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+
+            fileItems.forEach((item, index) => {
+                item.style.display = (index >= start && index < end) ? 'flex' : 'none';
+            });
+
+            updatePaginationInfo();
+        }
+
+        // 切换页面
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                showCurrentPage();
+            }
+        }
+
+        // 初始化分页显示
+        document.addEventListener('DOMContentLoaded', () => {
+            updatePaginationInfo();
+            showCurrentPage();
+        });
+    </script>
+
+</body>
+</html>
