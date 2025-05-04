@@ -1,6 +1,7 @@
 package _Struct
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -15,6 +16,7 @@ type FileDocument struct {
 	Id   int    `json:"Id"`
 	Name string `json:"name"`
 	Type string `json:"type"`
+	Size string `json:"size"`
 }
 
 // 添加分页相关结构体
@@ -48,11 +50,14 @@ func (fileService *FileService) InitfileService(path string) error {
 			fileType = "unknown"
 		}
 
+		fileSize := FormatFileSize(fileInfo.Size())
+
 		// 将文件信息添加到切片中
 		fileList = append(fileList, FileDocument{
 			Id:   i + 1,
 			Name: fileInfo.Name(),
 			Type: fileType,
+			Size: fileSize,
 		})
 	}
 	fileService.FileDocuments = fileList
@@ -79,4 +84,59 @@ func (fileService *FileService) GetFileById(id int) *FileDocument {
 		}
 	}
 	return nil
+}
+
+// 统计当前服务的文件列表总数
+func (fileService *FileService) GetFileList() int {
+	return len(fileService.FileDocuments)
+}
+
+// 获取文件总大小（字节数）
+func (fileService *FileService) GetTotalSize(basePath string) (int64, error) {
+	var totalSize int64 = 0
+	for _, file := range fileService.FileDocuments {
+		// 构建文件完整路径
+		filePath := filepath.Join(basePath, file.Name)
+		// 获取文件信息
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			// 如果文件不存在或无法访问，跳过该文件
+			continue
+		}
+		// 累加文件大小
+		totalSize += fileInfo.Size()
+	}
+	return totalSize, nil
+}
+
+// 格式化文件大小
+func FormatFileSize(size int64) string {
+	const (
+		B  = 1
+		KB = 1024 * B
+		MB = 1024 * KB
+		GB = 1024 * MB
+		TB = 1024 * GB
+	)
+	switch {
+	case size >= TB:
+		return fmt.Sprintf("%.2f TB", float64(size)/float64(TB))
+	case size >= GB:
+		return fmt.Sprintf("%.2f GB", float64(size)/float64(GB))
+	case size >= MB:
+		return fmt.Sprintf("%.2f MB", float64(size)/float64(MB))
+	case size >= KB:
+		return fmt.Sprintf("%.2f KB", float64(size)/float64(KB))
+	default:
+		return fmt.Sprintf("%d B", size)
+	}
+}
+
+// 获取格式化的文件总大小（如：1.2 MB）
+func (fileService *FileService) GetFormattedTotalSize(basePath string) (string, error) {
+	totalSize, err := fileService.GetTotalSize(basePath)
+	if err != nil {
+		return "", err
+	}
+	return FormatFileSize(totalSize), nil
 }

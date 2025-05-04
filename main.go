@@ -22,18 +22,23 @@ func mergeChunks(fileName string, totalChunks int, finalDst string) {
 	for i := 0; i < totalChunks; i++ {
 		chunkPath := fmt.Sprintf("./temp/%s_%d", fileName, i)
 		chunk, _ := os.Open(chunkPath)
+		// 将切片内容复制到最终文件
 		io.Copy(out, chunk)
 		chunk.Close()
 		os.Remove(chunkPath) // 删除临时切片文件
 	}
 }
 
+// 获取文件信息
+
 func main() {
 	// 确保上传目录和临时目录存在
 	os.MkdirAll("./uploaded", 0755)
 	os.MkdirAll("./temp", 0755)
 
+	// 初始化路由
 	r := gin.Default()
+	// 加载模板文件
 	r.LoadHTMLGlob("./templates/*")
 	// 创建一个文件服务
 	var fileService _Struct.FileService
@@ -80,6 +85,7 @@ func main() {
 				Id:   len(fileService.FileDocuments) + 1,
 				Name: file.Filename,
 				Type: filepath.Ext(file.Filename),
+				Size: _Struct.FormatFileSize(file.Size),
 			})
 		}
 		fmt.Println("调用普通文件上传方式")
@@ -103,14 +109,24 @@ func main() {
 		// 检查所有切片是否都已上传完成
 		if chunkNumber == totalChunks-1 {
 			// 合并切片 指定切片最终保存位置
-			finalDst := fmt.Sprintf("./uploaded/%s", fileName)
+			finalDst := fmt.Sprintf("./uploade  d/%s", fileName)
 			mergeChunks(fileName, totalChunks, finalDst)
-
+			// 获取合并后文件的信息
+			fileInfo, err := os.Stat(finalDst)
+			var fileSize string
+			if err == nil {
+				// 如果成功获取文件信息，格式化文件大小
+				fileSize = _Struct.FormatFileSize(fileInfo.Size())
+			} else {
+				// 如果获取文件信息失败，设置默认值
+				fileSize = "未知大小"
+			}
 			// 更新文件服务信息
 			fileService.FileDocuments = append(fileService.FileDocuments, _Struct.FileDocument{
 				Id:   len(fileService.FileDocuments) + 1,
 				Name: fileName,
 				Type: filepath.Ext(fileName),
+				Size: fileSize,
 			})
 		}
 		fmt.Println("调用切片文件上传方式")
@@ -210,6 +226,34 @@ func main() {
 
 		// 使用http.ServeFile支持断点续传
 		http.ServeFile(c.Writer, c.Request, filePath)
+	})
+
+	// 跳转至文件查询页面
+	r.GET("/search", func(c *gin.Context) {
+		// 文件总数
+		totalFiles := fileService.GetFileList()
+		// 文件总大小
+		totalSize, _ := fileService.GetFormattedTotalSize("./uploaded")
+		// 收集所有文件类型
+		fileTypesMap := make(map[string]bool)
+		for _, file := range fileService.FileDocuments {
+			if file.Type != "" {
+				fileTypesMap[file.Type] = true
+			}
+		}
+		// 将文件类型映射转换为切片
+		var fileTypes []string
+		// 遍历文件类型映射，将文件类型添加到切片中
+		for fileType := range fileTypesMap {
+			fileTypes = append(fileTypes, fileType)
+		}
+		fmt.Println(totalSize)
+		c.HTML(http.StatusOK, "searchFile.html", gin.H{
+			"fileList":   fileService.FileDocuments,
+			"totalFiles": totalFiles,
+			"totalSize":  totalSize,
+			"fileTypes":  fileTypes,
+		})
 	})
 
 	r.Run()

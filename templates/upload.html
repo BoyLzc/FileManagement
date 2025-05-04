@@ -173,8 +173,9 @@
                     const fileItem = document.createElement('div'); // 创建一个新的 div 元素用于显示文件信息
                     fileItem.className = 'selected-file-item'; // 设置 div 的类名
                     fileItem.innerHTML = `
-                        <span class="file-icon">📄</span> // 添加文件图标
-                        <span>${file.name}</span> // 显示文件名
+                        <span class="file-icon">📄</span>
+                        <span>${file.name}</span>
+                        <span class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
                     `;
                     selectedFiles.appendChild(fileItem); // 将文件信息添加到已选择文件列表中
                 });
@@ -182,7 +183,8 @@
                 fileNameDisplay.textContent = '选择文件'; // 如果没有选择文件，显示提示信息
             }
         }
-        // 添加上传成功提示功能
+
+        // 添加上传功能 选择直接上传还是切片上传文件
         document.querySelector('.upload-form').addEventListener('submit', function(event) {
             event.preventDefault(); // 阻止默认表单提交行为
 
